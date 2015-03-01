@@ -33,7 +33,7 @@ dependencies {
 }
 
 
-apply plugin: eu.hinsch.cec.CheckedExceptionWrapperPlugin
+apply plugin: eu.hinsch.cew.CheckedExceptionWrapperPlugin
 
 checkedExceptionWrapper {
     classes = ['org/apache/commons/io/IOUtils', 'org/apache/commons/io/FileUtils']

@@ -1,4 +1,4 @@
-package eu.hinsch.cec
+package eu.hinsch.cew
 
 import com.github.javaparser.JavaParser
 import com.github.javaparser.ast.CompilationUnit
@@ -7,7 +7,6 @@ import com.github.javaparser.ast.body.MethodDeclaration
 import com.github.javaparser.ast.body.MultiTypeParameter
 import com.github.javaparser.ast.body.TypeDeclaration
 import com.github.javaparser.ast.body.VariableDeclaratorId
-import com.github.javaparser.ast.comments.LineComment
 import com.github.javaparser.ast.expr.Expression
 import com.github.javaparser.ast.expr.NameExpr
 import com.github.javaparser.ast.expr.ObjectCreationExpr
