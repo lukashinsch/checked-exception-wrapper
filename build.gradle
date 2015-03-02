@@ -1,41 +1,20 @@
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath("com.github.javaparser:javaparser-core:2.0.0")
-        classpath("commons-io:commons-io:2.4")
-    }
-}
-
-
-
-apply plugin: 'java'
-
-sourceCompatibility = 1.5
-version = '1.0'
 
 repositories {
     mavenCentral()
 }
 
-configurations {
-    exceptionWrapperGenerator
+
+apply plugin: eu.hinsch.cew.CheckedExceptionWrapperGeneratorPlugin
+
+checkedExceptionWrapperGenerator {
+    classes = ['org/apache/commons/io/IOUtils', 'org/apache/commons/io/FileUtils', 'org/apache/commons/compress/utils/IOUtils']
+    outputFolder = 'src/generated/java'
+    generatedClassNameSuffix = 'Wrapper'
 }
 
 dependencies {
-    compile "com.github.javaparser:javaparser-core:2.0.0"
-    compile("commons-io:commons-io:2.4")
-
-    exceptionWrapperGenerator("commons-io:commons-io:2.4:sources")
-
-    testCompile group: 'junit', name: 'junit', version: '4.11'
+    checkedExceptionWrapperGenerator("commons-io:commons-io:2.4:sources")
+    checkedExceptionWrapperGenerator("org.apache.commons:commons-compress:1.9:sources")
 }
 
 
-apply plugin: eu.hinsch.cew.CheckedExceptionWrapperPlugin
-
-checkedExceptionWrapper {
-    classes = ['org/apache/commons/io/IOUtils', 'org/apache/commons/io/FileUtils']
-    outputFolder = 'src/generated/java'
-}
