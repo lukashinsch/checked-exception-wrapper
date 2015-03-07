@@ -10,6 +10,8 @@ checkedExceptionWrapperGenerator {
     classes = ['org/apache/commons/io/IOUtils', 'org/apache/commons/io/FileUtils', 'org/apache/commons/compress/utils/IOUtils']
     outputFolder = 'src/generated/java'
     generatedClassNameSuffix = 'Wrapper'
+    runtimeExceptionClass = 'java.lang.IllegalArgumentException'
+    exceptionMessage = 'my wrapped checked exception'
 }
 
 dependencies {

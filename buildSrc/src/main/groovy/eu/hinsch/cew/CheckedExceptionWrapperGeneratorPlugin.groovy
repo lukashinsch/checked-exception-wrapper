@@ -84,7 +84,7 @@ class CheckedExceptionWrapperGeneratorPlugin implements Plugin<Project> {
                         body.setStmts(new ArrayList<>());
 
                         BlockStmt tryBlock = new BlockStmt(originalStatements);
-                        CatchClause catchClause = new CatchClause(createCatchExceptionParameter(), createCatchBlock());
+                        CatchClause catchClause = new CatchClause(createCatchExceptionParameter(), createCatchBlock(project));
 
                         // TODO avoid empty finally block
                         TryStmt tryStmt = new TryStmt(tryBlock, [catchClause], new BlockStmt());
@@ -97,11 +97,13 @@ class CheckedExceptionWrapperGeneratorPlugin implements Plugin<Project> {
         }
     }
 
-    private BlockStmt createCatchBlock() {
-        Expression errorMessage = new StringLiteralExpr("wrapped exception")
+    private BlockStmt createCatchBlock(Project project) {
+        Expression errorMessage = new StringLiteralExpr(
+                project.checkedExceptionWrapperGenerator.exceptionMessage)
         Expression exceptionParameter = new NameExpr("e");
         ObjectCreationExpr newRuntimeException = new ObjectCreationExpr(null,
-                new ClassOrInterfaceType("RuntimeException"),
+                new ClassOrInterfaceType(
+                        project.checkedExceptionWrapperGenerator.runtimeExceptionClass),
                 [errorMessage, exceptionParameter])
 
         ThrowStmt throwStmt = new ThrowStmt()
@@ -130,4 +132,6 @@ class CheckedExceptionWrapperGeneratorPluginExtension {
     List<String> classes = []
     String outputFolder
     String generatedClassNameSuffix = "Wrapped"
+    String runtimeExceptionClass = 'RuntimeException'
+    String exceptionMessage = 'wrapped checked exception'
 }
