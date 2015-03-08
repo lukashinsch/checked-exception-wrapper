@@ -1,22 +1,86 @@
+ext {
+    pluginVersion = '0.1.0'
+}
 
 repositories {
     mavenCentral()
 }
 
-
-apply plugin: eu.hinsch.cew.CheckedExceptionWrapperGeneratorPlugin
-
-checkedExceptionWrapperGenerator {
-    classes = ['org/apache/commons/io/IOUtils', 'org/apache/commons/io/FileUtils', 'org/apache/commons/compress/utils/IOUtils']
-    outputFolder = 'src/generated/java'
-    generatedClassNameSuffix = 'Wrapper'
-    runtimeExceptionClass = 'java.lang.IllegalArgumentException'
-    exceptionMessage = 'my wrapped checked exception'
-}
+apply plugin: 'groovy'
+apply plugin: 'java'
 
 dependencies {
-    checkedExceptionWrapperGenerator("commons-io:commons-io:2.4:sources")
-    checkedExceptionWrapperGenerator("org.apache.commons:commons-compress:1.9:sources")
+    compile gradleApi()
+    compile localGroovy()
+    compile "com.github.javaparser:javaparser-core:2.0.0"
 }
 
 
+if (System.getenv('CI') != 'true') {
+
+    apply plugin: 'signing'
+    apply plugin: 'maven'
+
+    group = 'eu.hinsch'
+    version = pluginVersion
+
+    task javadocJar(type: Jar, dependsOn: javadoc) {
+        classifier = 'javadoc'
+        from tasks.javadoc.destinationDir
+    }
+
+    task sourcesJar(type: Jar) {
+        from sourceSets.main.allSource
+        classifier = 'sources'
+    }
+
+    artifacts {
+        archives jar
+        archives javadocJar
+        archives sourcesJar
+    }
+
+    signing {
+        sign configurations.archives
+    }
+
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                    authentication(userName: sonatypeUsername, password: sonatypePassword)
+                }
+
+                pom.project {
+                    name 'checked-exception-wrapper-gradle-plugin'
+                    packaging 'jar'
+                    description 'gradle plugin to create wrapper classes that handle checked exceptions in libraries'
+                    url 'https://github.com/lukashinsch/checked-exception-wrapper-gradle-plugin/'
+
+                    scm {
+                        url 'scm:git@github.com:lukashinsch/checked-exception-wrapper-gradle-plugin.git'
+                        connection 'scm:git@github.com:lukashinsch/checked-exception-wrapper-gradle-plugin.git'
+                        developerConnection 'scm:git@github.com:lukashinsch/checked-exception-wrapper-gradle-plugin.git'
+                    }
+
+                    licenses {
+                        license {
+                            name 'MIT License'
+                            url 'http://www.opensource.org/licenses/mit-license.php'
+                            distribution 'repo'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id 'lukashinsch'
+                            name 'Lukas Hinsch'
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
