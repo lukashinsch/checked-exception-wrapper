@@ -1,4 +1,4 @@
-# checked-exception-wrapper
+# checked-exception-wrapper-gradle-plugin
 gradle plugin to create wrapper classes that handle checked exceptions in libraries
 
 # What it does
