@@ -5,13 +5,13 @@ gradle plugin to create wrapper classes that handle checked exceptions in librar
 The plugin analyses will create a copy of the source java file.
 Any method that declares exceptions will be transformed in the following way:
 
-Old
+Old (MyClass.java)
 ```java
 public void getFileInputStream(String file) throws FileNotFoundException {
   return new FileInputStream(file);
 }
 ```
-New
+New (MyClassWrapped.java)
 ```java
 public void getFileInputStream(String file) {
   try {
@@ -24,8 +24,6 @@ public void getFileInputStream(String file) {
 ```
 
 # Howto use
-
-TODO publish to maven central
 
 ```gradle
 
@@ -44,8 +42,8 @@ checkedExceptionWrapperGenerator {
     classes = ['org/apache/commons/io/IOUtils', 'org/apache/commons/io/FileUtils', 'org/apache/commons/compress/utils/IOUtils']
     outputFolder = 'src/generated/java'
     generatedClassNameSuffix = 'Wrapper'
-    runtimeExceptionClass = 'java.lang.IllegalArgumentException'
-    exceptionMessage = 'my wrapped checked exception'
+    runtimeExceptionClass = 'java.lang.RuntimeException'
+    exceptionMessage = 'wrapped checked exception'
 }
 
 dependencies {
@@ -54,3 +52,6 @@ dependencies {
 }
 
 ```
+
+TODO
+* Add context to exception message (parameter values)
