@@ -29,12 +29,16 @@ TODO publish to maven central
 
 ```gradle
 
-repositories {
-    mavenCentral()
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'eu.hinsch:checked-exception-wrapper-gradle-plugin:0.1.0'
+    }
 }
 
-
-apply plugin: eu.hinsch.cew.CheckedExceptionWrapperGeneratorPlugin
+apply plugin: 'eu.hinsch.checked-exception-wrapper'
 
 checkedExceptionWrapperGenerator {
     classes = ['org/apache/commons/io/IOUtils', 'org/apache/commons/io/FileUtils', 'org/apache/commons/compress/utils/IOUtils']
