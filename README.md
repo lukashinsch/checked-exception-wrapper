@@ -39,7 +39,9 @@ buildscript {
 apply plugin: 'eu.hinsch.checked-exception-wrapper'
 
 checkedExceptionWrapperGenerator {
-    classes = ['org/apache/commons/io/IOUtils', 'org/apache/commons/io/FileUtils', 'org/apache/commons/compress/utils/IOUtils']
+    classes = ['org/apache/commons/io/IOUtils', 
+      'org/apache/commons/io/FileUtils', 
+      'org/apache/commons/compress/utils/IOUtils']
     outputFolder = 'src/generated/java'
     generatedClassNameSuffix = 'Wrapper'
     runtimeExceptionClass = 'java.lang.RuntimeException'
