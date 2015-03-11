@@ -23,6 +23,14 @@ public void getFileInputStream(String file) {
 }
 ```
 
+In a future release, the message should include the parameter values like
+```java
+public void getFileInputStream(String file) {
+  ...
+  throw new RuntimeException("wrapped checked exception, parameters: file=" + String.valueOf(file), e);
+  ...
+```
+
 # Howto use
 
 ```gradle
