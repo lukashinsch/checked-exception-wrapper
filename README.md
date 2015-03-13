@@ -5,13 +5,13 @@ gradle plugin to create wrapper classes that handle checked exceptions in librar
 The plugin analyses will create a copy of the source java file.
 Any method that declares exceptions will be transformed in the following way:
 
-Old
+Old (MyClass.java)
 ```java
 public void getFileInputStream(String file) throws FileNotFoundException {
   return new FileInputStream(file);
 }
 ```
-New
+New (MyClassWrapped.java)
 ```java
 public void getFileInputStream(String file) {
   try {
@@ -23,25 +23,37 @@ public void getFileInputStream(String file) {
 }
 ```
 
-# Howto use
+In a future release, the message should include the parameter values like
+```java
+public void getFileInputStream(String file) {
+  ...
+  throw new RuntimeException("wrapped checked exception, parameters: file=" + String.valueOf(file), e);
+  ...
+```
 
-TODO publish to maven central
+# Howto use
 
 ```gradle
 
-repositories {
-    mavenCentral()
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'eu.hinsch:checked-exception-wrapper-gradle-plugin:0.1.0'
+    }
 }
 
-
-apply plugin: eu.hinsch.cew.CheckedExceptionWrapperGeneratorPlugin
+apply plugin: 'eu.hinsch.checked-exception-wrapper'
 
 checkedExceptionWrapperGenerator {
-    classes = ['org/apache/commons/io/IOUtils', 'org/apache/commons/io/FileUtils', 'org/apache/commons/compress/utils/IOUtils']
+    classes = ['org/apache/commons/io/IOUtils', 
+      'org/apache/commons/io/FileUtils', 
+      'org/apache/commons/compress/utils/IOUtils']
     outputFolder = 'src/generated/java'
     generatedClassNameSuffix = 'Wrapper'
-    runtimeExceptionClass = 'java.lang.IllegalArgumentException'
-    exceptionMessage = 'my wrapped checked exception'
+    runtimeExceptionClass = 'java.lang.RuntimeException'
+    exceptionMessage = 'wrapped checked exception'
 }
 
 dependencies {
@@ -50,3 +62,6 @@ dependencies {
 }
 
 ```
+
+TODO
+* Add context to exception message (parameter values)
