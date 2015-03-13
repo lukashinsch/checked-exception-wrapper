@@ -15,6 +15,9 @@ dependencies {
     compile "com.github.javaparser:javaparser-core:2.0.0"
 }
 
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.3'
+}
 
 if (System.getenv('CI') != 'true') {
 
