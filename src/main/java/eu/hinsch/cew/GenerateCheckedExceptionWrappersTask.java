@@ -18,6 +18,7 @@ import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.stmt.ThrowStmt;
 import com.github.javaparser.ast.stmt.TryStmt;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
@@ -64,7 +65,7 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
             try {
                 cu = JavaParser.parse(inputStream);
             } catch (ParseException e) {
-                e.printStackTrace();
+                throw new GradleException("cannot parse source " + className, e);
             }
             enhanceSource(cu);
             saveSource(className, cu);
@@ -74,29 +75,31 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
     }
 
     private InputStream getSource(String className) {
-        return getProject().getConfigurations().getByName("checkedExceptionWrapperGenerator")
+        return getProject()
+                .getConfigurations()
+                .getByName("checkedExceptionWrapperGenerator")
                 .resolve()
                 .stream()
-                .peek(System.out::println)
-                .map(jar -> {
-                    ZipFile zip = null;
-                    try {
-                        zip = new ZipFile(jar);
-                        ZipEntry entry = zip.getEntry(className + ".java");
-                        if (entry != null) {
-                            return zip.getInputStream(entry);
-                        }
-                        return null;
-                    } catch (IOException e) {
-                        throw new GradleException("", e);
-                    }
-                })
+                .map(jar -> zipEntryInputStream(jar, className))
                 .filter(stream -> stream != null)
                 .findFirst()
                 .orElseThrow(() -> new GradleException("cannot find source for " + className));
     }
 
-    void enhanceSource(CompilationUnit cu) {
+    private InputStream zipEntryInputStream(File jar, String className) {
+        try {
+            ZipFile zip = new ZipFile(jar);
+            ZipEntry entry = zip.getEntry(className + ".java");
+            if (entry != null) {
+                return zip.getInputStream(entry);
+            }
+            return null;
+        } catch (IOException e) {
+            throw new GradleException("Cannot read zip entry " + className + " in " + jar, e);
+        }
+    }
+
+    private void enhanceSource(CompilationUnit cu) {
         String suffix = extension.getGeneratedClassNameSuffix();
         List<TypeDeclaration> types = cu.getTypes();
         for (TypeDeclaration type : types) {
@@ -105,29 +108,27 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
 
             List<BodyDeclaration> members = type.getMembers();
 
-            for (BodyDeclaration member : members) {
-                if (member instanceof MethodDeclaration) {
-                    MethodDeclaration method = (MethodDeclaration) member;
-                    List<NameExpr> t = method.getThrows();
-                    if (t != null && t.size() > 0) {
-                        method.setThrows(null);
+            members.stream()
+                    .filter(member -> member instanceof MethodDeclaration)
+                    .map(member -> (MethodDeclaration)member)
+                    .filter(methodDeclaration -> CollectionUtils.isNotEmpty(methodDeclaration.getThrows()))
+                    .forEach(method -> {
+                                method.setThrows(null);
+                                BlockStmt body = method.getBody();
 
-                        BlockStmt body = method.getBody();
+                                List<Statement> originalStatements = body.getStmts();
+                                body.setStmts(new ArrayList<>());
 
-                        List<Statement> originalStatements = body.getStmts();
-                        body.setStmts(new ArrayList<>());
+                                BlockStmt tryBlock = new BlockStmt(originalStatements);
+                                CatchClause catchClause = new CatchClause(createCatchExceptionParameter(), createCatchBlock());
 
-                        BlockStmt tryBlock = new BlockStmt(originalStatements);
-                        CatchClause catchClause = new CatchClause(createCatchExceptionParameter(), createCatchBlock());
+                                // TODO avoid empty finally block
+                                TryStmt tryStmt = new TryStmt(tryBlock, singletonList(catchClause), new BlockStmt());
+                                tryStmt.setResources(emptyList());
 
-                        // TODO avoid empty finally block
-                        TryStmt tryStmt = new TryStmt(tryBlock, singletonList(catchClause), new BlockStmt());
-                        tryStmt.setResources(emptyList());
-
-                        body.getStmts().add(tryStmt);
-                    }
-                }
-            }
+                                body.getStmts().add(tryStmt);
+                            }
+                    );
         }
     }
 
@@ -157,11 +158,11 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
     void saveSource(String className, CompilationUnit cu) {
         String suffix = extension.getGeneratedClassNameSuffix();
         Paths.get(extension.getOutputFolder(), className).getParent().toFile().mkdirs();
+        String outputFile = extension.getOutputFolder() + File.separator + className + suffix + ".java";
         try {
-            FileUtils.writeStringToFile(new File(extension.getOutputFolder() + "/" + className + suffix + ".java"),
-                    cu.toString());
+            FileUtils.writeStringToFile(new File(outputFile), cu.toString());
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new GradleException("cannot write file " + outputFile, e);
         }
     }
 
