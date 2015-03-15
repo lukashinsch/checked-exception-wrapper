@@ -51,7 +51,7 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
     }
 
     @TaskAction
-    void generate() throws ParseException {
+    public void generate() throws ParseException {
 
         getLogger().debug("classes: " + extension.getClasses());
         getLogger().debug("output folder: " + extension.getOutputFolder());
@@ -70,7 +70,7 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
             enhanceSource(cu);
             saveSource(className, cu);
 
-            getLogger().info("Created ${className}${suffix}.java");
+            getLogger().info("Created " + className + suffix + ".java");
         });
     }
 
@@ -112,33 +112,33 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
                     .filter(member -> member instanceof MethodDeclaration)
                     .map(member -> (MethodDeclaration)member)
                     .filter(methodDeclaration -> CollectionUtils.isNotEmpty(methodDeclaration.getThrows()))
-                    .forEach(method -> {
-                                method.setThrows(null);
-                                BlockStmt body = method.getBody();
-
-                                List<Statement> originalStatements = body.getStmts();
-                                body.setStmts(new ArrayList<>());
-
-                                BlockStmt tryBlock = new BlockStmt(originalStatements);
-                                CatchClause catchClause = new CatchClause(createCatchExceptionParameter(), createCatchBlock());
-
-                                // TODO avoid empty finally block
-                                TryStmt tryStmt = new TryStmt(tryBlock, singletonList(catchClause), new BlockStmt());
-                                tryStmt.setResources(emptyList());
-
-                                body.getStmts().add(tryStmt);
-                            }
-                    );
+                    .forEach(this::convertMethod);
         }
     }
 
-    BlockStmt createCatchBlock() {
+    private void convertMethod(MethodDeclaration method) {
+        method.setThrows(null);
+        BlockStmt body = method.getBody();
+
+        List<Statement> originalStatements = body.getStmts();
+        body.setStmts(new ArrayList<>());
+
+        BlockStmt tryBlock = new BlockStmt(originalStatements);
+        CatchClause catchClause = new CatchClause(createCatchExceptionParameter(), createCatchBlock());
+
+        // TODO avoid empty finally block
+        TryStmt tryStmt = new TryStmt(tryBlock, singletonList(catchClause), new BlockStmt());
+        tryStmt.setResources(emptyList());
+
+        body.getStmts().add(tryStmt);
+    }
+
+    private BlockStmt createCatchBlock() {
         // TODO add context info to message (parameter values)
         Expression errorMessage = new StringLiteralExpr(extension.getExceptionMessage());
         Expression exceptionParameter = new NameExpr("e");
         ObjectCreationExpr newRuntimeException = new ObjectCreationExpr(null,
-                new ClassOrInterfaceType(
-                        extension.getRuntimeExceptionClass()),
+                new ClassOrInterfaceType(extension.getRuntimeExceptionClass()),
                 asList(errorMessage, exceptionParameter));
 
         ThrowStmt throwStmt = new ThrowStmt();
@@ -149,13 +149,13 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
         return catchBlock;
     }
 
-    MultiTypeParameter createCatchExceptionParameter() {
+    private MultiTypeParameter createCatchExceptionParameter() {
         return new MultiTypeParameter(0, emptyList(),
             singletonList(new ClassOrInterfaceType("Exception")),
             new VariableDeclaratorId("e"));
     }
 
-    void saveSource(String className, CompilationUnit cu) {
+    private void saveSource(String className, CompilationUnit cu) {
         String suffix = extension.getGeneratedClassNameSuffix();
         Paths.get(extension.getOutputFolder(), className).getParent().toFile().mkdirs();
         String outputFile = extension.getOutputFolder() + File.separator + className + suffix + ".java";
