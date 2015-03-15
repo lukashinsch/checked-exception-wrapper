@@ -9,7 +9,8 @@ import java.util.List;
 public class CheckedExceptionWrapperGeneratorPluginExtension {
     private List<String> classes = new ArrayList<>();
     private String outputFolder;
-    private String generatedClassNameSuffix = "Wrapped";
+    private String generatedClassNamePrefix = "Unchecked";
+    private String generatedClassNameSuffix = "";
     private String runtimeExceptionClass = "RuntimeException";
     private String exceptionMessage = "wrapped checked exception";
 
@@ -51,5 +52,13 @@ public class CheckedExceptionWrapperGeneratorPluginExtension {
 
     public void setExceptionMessage(String exceptionMessage) {
         this.exceptionMessage = exceptionMessage;
+    }
+
+    public String getGeneratedClassNamePrefix() {
+        return generatedClassNamePrefix;
+    }
+
+    public void setGeneratedClassNamePrefix(String generatedClassNamePrefix) {
+        this.generatedClassNamePrefix = generatedClassNamePrefix;
     }
 }

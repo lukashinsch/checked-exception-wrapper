@@ -56,8 +56,6 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
         getLogger().debug("classes: " + extension.getClasses());
         getLogger().debug("output folder: " + extension.getOutputFolder());
 
-        String suffix = extension.getGeneratedClassNameSuffix();
-
         extension.getClasses().forEach(className -> {
             InputStream inputStream = getSource(className);
 
@@ -70,8 +68,27 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
             enhanceSource(cu);
             saveSource(className, cu);
 
-            getLogger().info("Created " + className + suffix + ".java");
+            getLogger().info("Created " + getTargetClassName(className) + ".java");
         });
+    }
+
+    private String getTargetClassName(String className) {
+        return getPackage(className)
+                + getTargetSimpleClassName(className);
+    }
+
+    private String getTargetSimpleClassName(String className) {
+        return extension.getGeneratedClassNamePrefix()
+                + getSimpleClassName(className)
+                + extension.getGeneratedClassNameSuffix();
+    }
+
+    private String getSimpleClassName(String className) {
+        return className.substring(className.lastIndexOf("/") + 1);
+    }
+
+    private String getPackage(String className) {
+        return className.substring(0, className.lastIndexOf("/") + 1);
     }
 
     private InputStream getSource(String className) {
@@ -100,11 +117,12 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
     }
 
     private void enhanceSource(CompilationUnit cu) {
+        String prefix = extension.getGeneratedClassNamePrefix();
         String suffix = extension.getGeneratedClassNameSuffix();
         List<TypeDeclaration> types = cu.getTypes();
         for (TypeDeclaration type : types) {
 
-            type.setName(type.getName() + suffix);
+            type.setName(prefix + type.getName() + suffix);
 
             List<BodyDeclaration> members = type.getMembers();
 
@@ -158,7 +176,7 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
     private void saveSource(String className, CompilationUnit cu) {
         String suffix = extension.getGeneratedClassNameSuffix();
         Paths.get(extension.getOutputFolder(), className).getParent().toFile().mkdirs();
-        String outputFile = extension.getOutputFolder() + File.separator + className + suffix + ".java";
+        String outputFile = extension.getOutputFolder() + File.separator + getTargetClassName(className) + ".java";
         try {
             FileUtils.writeStringToFile(new File(outputFile), cu.toString());
         } catch (IOException e) {
