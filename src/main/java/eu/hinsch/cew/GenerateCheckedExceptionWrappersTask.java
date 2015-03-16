@@ -56,20 +56,22 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
         getLogger().debug("classes: " + extension.getClasses());
         getLogger().debug("output folder: " + extension.getOutputFolder());
 
-        extension.getClasses().forEach(className -> {
-            InputStream inputStream = getSource(className);
+        extension.getClasses().forEach(this::generateClassWrapper);
+    }
 
-            CompilationUnit cu = null;
-            try {
-                cu = JavaParser.parse(inputStream);
-            } catch (ParseException e) {
-                throw new GradleException("cannot parse source " + className, e);
-            }
-            enhanceSource(cu);
-            saveSource(className, cu);
+    private void generateClassWrapper(String className) {
+        InputStream inputStream = getSource(className);
 
-            getLogger().info("Created " + getTargetClassName(className) + ".java");
-        });
+        CompilationUnit cu = null;
+        try {
+            cu = JavaParser.parse(inputStream);
+        } catch (ParseException e) {
+            throw new GradleException("cannot parse source " + className, e);
+        }
+        enhanceSource(cu);
+        saveSource(className, cu);
+
+        getLogger().info("Created " + getTargetClassName(className) + ".java");
     }
 
     private String getTargetClassName(String className) {
@@ -174,7 +176,6 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
     }
 
     private void saveSource(String className, CompilationUnit cu) {
-        String suffix = extension.getGeneratedClassNameSuffix();
         Paths.get(extension.getOutputFolder(), className).getParent().toFile().mkdirs();
         String outputFile = extension.getOutputFolder() + File.separator + getTargetClassName(className) + ".java";
         try {
