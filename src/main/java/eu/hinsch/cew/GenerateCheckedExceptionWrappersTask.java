@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -43,26 +42,25 @@ import static java.util.Collections.singletonList;
  */
 public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
 
+    private static final String JAVA = ".java";
+    private static final String CONFIGURATION = "checkedExceptionWrapperGenerator";
+
     private final CheckedExceptionWrapperGeneratorPluginExtension extension;
 
     public GenerateCheckedExceptionWrappersTask() {
         extension = (CheckedExceptionWrapperGeneratorPluginExtension)getProject()
-                .getExtensions().getByName("checkedExceptionWrapperGenerator");
+                .getExtensions().getByName(CONFIGURATION);
     }
 
     @TaskAction
     public void generate() throws ParseException {
-
-        getLogger().debug("classes: " + extension.getClasses());
-        getLogger().debug("output folder: " + extension.getOutputFolder());
-
         extension.getClasses().forEach(this::generateClassWrapper);
     }
 
     private void generateClassWrapper(String className) {
         InputStream inputStream = getSource(className);
 
-        CompilationUnit cu = null;
+        CompilationUnit cu;
         try {
             cu = JavaParser.parse(inputStream);
         } catch (ParseException e) {
@@ -71,7 +69,7 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
         enhanceSource(cu);
         saveSource(className, cu);
 
-        getLogger().info("Created " + getTargetClassName(className) + ".java");
+        getLogger().info("Created " + getTargetClassName(className) + JAVA);
     }
 
     private String getTargetClassName(String className) {
@@ -96,7 +94,7 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
     private InputStream getSource(String className) {
         return getProject()
                 .getConfigurations()
-                .getByName("checkedExceptionWrapperGenerator")
+                .getByName(CONFIGURATION)
                 .resolve()
                 .stream()
                 .map(jar -> zipEntryInputStream(jar, className))
@@ -108,7 +106,7 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
     private InputStream zipEntryInputStream(File jar, String className) {
         try {
             ZipFile zip = new ZipFile(jar);
-            ZipEntry entry = zip.getEntry(className + ".java");
+            ZipEntry entry = zip.getEntry(className + JAVA);
             if (entry != null) {
                 return zip.getInputStream(entry);
             }
@@ -177,7 +175,7 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
 
     private void saveSource(String className, CompilationUnit cu) {
         Paths.get(extension.getOutputFolder(), className).getParent().toFile().mkdirs();
-        String outputFile = extension.getOutputFolder() + File.separator + getTargetClassName(className) + ".java";
+        String outputFile = extension.getOutputFolder() + File.separator + getTargetClassName(className) + JAVA;
         try {
             FileUtils.writeStringToFile(new File(outputFile), cu.toString());
         } catch (IOException e) {
