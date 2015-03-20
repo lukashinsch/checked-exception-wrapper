@@ -11,7 +11,7 @@ public void getFileInputStream(String file) throws FileNotFoundException {
   return new FileInputStream(file);
 }
 ```
-New (MyClassWrapped.java)
+New (UncheckedMyClass.java)
 ```java
 public void getFileInputStream(String file) {
   try {
@@ -51,7 +51,8 @@ checkedExceptionWrapperGenerator {
       'org/apache/commons/io/FileUtils', 
       'org/apache/commons/compress/utils/IOUtils']
     outputFolder = 'src/generated/java'
-    generatedClassNameSuffix = 'Wrapper'
+    generatedClassNamePrefix = 'Unchecked'
+    generatedClassNameSuffix = ''
     runtimeExceptionClass = 'java.lang.RuntimeException'
     exceptionMessage = 'wrapped checked exception'
 }
