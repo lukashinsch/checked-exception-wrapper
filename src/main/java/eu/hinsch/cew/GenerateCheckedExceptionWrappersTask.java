@@ -3,11 +3,7 @@ package eu.hinsch.cew;
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseException;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.BodyDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.body.MultiTypeParameter;
-import com.github.javaparser.ast.body.TypeDeclaration;
-import com.github.javaparser.ast.body.VariableDeclaratorId;
+import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
@@ -122,7 +118,8 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
         List<TypeDeclaration> types = cu.getTypes();
         for (TypeDeclaration type : types) {
 
-            type.setName(prefix + type.getName() + suffix);
+            String newClassName = prefix + type.getName() + suffix;
+            type.setName(newClassName);
 
             List<BodyDeclaration> members = type.getMembers();
 
@@ -131,6 +128,11 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
                     .map(member -> (MethodDeclaration)member)
                     .filter(methodDeclaration -> CollectionUtils.isNotEmpty(methodDeclaration.getThrows()))
                     .forEach(this::convertMethod);
+
+            members.stream()
+                    .filter(member -> member instanceof ConstructorDeclaration)
+                    .map(member -> (ConstructorDeclaration)member)
+                    .forEach(constructor -> constructor.setName(newClassName));
         }
     }
 
