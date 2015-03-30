@@ -4,6 +4,7 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseException;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.*;
+import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
@@ -26,6 +27,7 @@ import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -88,37 +90,47 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
     }
 
     private InputStream getSource(String className) {
-        return getProject()
+        Set<File> sourceArchives = getProject()
                 .getConfigurations()
                 .getByName(CONFIGURATION)
-                .resolve()
+                .resolve();
+        String jdkLocation = getJdkLocation();
+        if (jdkLocation != null) {
+            File srcZip = new File(jdkLocation, "src.zip");
+            if (srcZip.exists()) {
+                sourceArchives.add(srcZip);
+            }
+        }
+        return sourceArchives
                 .stream()
-                .map(jar -> zipEntryInputStream(jar, className))
+                .map(archive -> zipEntryInputStream(archive, className))
                 .filter(stream -> stream != null)
                 .findFirst()
                 .orElseThrow(() -> new GradleException("cannot find source for " + className));
     }
 
-    private InputStream zipEntryInputStream(File jar, String className) {
+    private String getJdkLocation() {
+        return System.getProperty("JDK_HOME", System.getenv("JDK_HOME"));
+    }
+
+    private InputStream zipEntryInputStream(File archive, String className) {
         try {
-            ZipFile zip = new ZipFile(jar);
+            ZipFile zip = new ZipFile(archive);
             ZipEntry entry = zip.getEntry(className + JAVA);
             if (entry != null) {
                 return zip.getInputStream(entry);
             }
             return null;
         } catch (IOException e) {
-            throw new GradleException("Cannot read zip entry " + className + " in " + jar, e);
+            throw new GradleException("Cannot read zip entry " + className + " in " + archive, e);
         }
     }
 
     private void enhanceSource(CompilationUnit cu) {
-        String prefix = extension.getGeneratedClassNamePrefix();
-        String suffix = extension.getGeneratedClassNameSuffix();
         List<TypeDeclaration> types = cu.getTypes();
         for (TypeDeclaration type : types) {
 
-            String newClassName = prefix + type.getName() + suffix;
+            String newClassName = getNewClassName(type.getName());
             type.setName(newClassName);
 
             List<BodyDeclaration> members = type.getMembers();
@@ -127,19 +139,49 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
                     .filter(member -> member instanceof MethodDeclaration)
                     .map(member -> (MethodDeclaration)member)
                     .filter(methodDeclaration -> CollectionUtils.isNotEmpty(methodDeclaration.getThrows()))
+                    .filter(method -> !ModifierSet.isNative(method.getModifiers()))
                     .forEach(this::convertMethod);
 
             members.stream()
                     .filter(member -> member instanceof ConstructorDeclaration)
                     .map(member -> (ConstructorDeclaration)member)
-                    .forEach(constructor -> constructor.setName(newClassName));
+                    .forEach(this::convertConstructor);
+        }
+    }
+
+    private String getNewClassName(String name) {
+        String prefix = extension.getGeneratedClassNamePrefix();
+        String suffix = extension.getGeneratedClassNameSuffix();
+        return prefix + name + suffix;
+    }
+
+    private void convertConstructor(ConstructorDeclaration constructor) {
+        constructor.setName(getNewClassName(constructor.getName()));
+        if (CollectionUtils.isNotEmpty(constructor.getThrows())) {
+            removeThrowsFromJavadoc(constructor.getComment());
+            constructor.setThrows(null);
+            BlockStmt block = constructor.getBlock();
+            if (CollectionUtils.isNotEmpty(block.getStmts())) {
+                String firstStatement = block.getStmts().get(0).toString();
+                if (firstStatement.startsWith("this(") || firstStatement.startsWith("super(")) {
+                    if (block.getStmts().size() > 1) {
+                        // TODO implement once we have use case (wrap everything after the this/super call)
+                        throw new GradleException("cannot (yet) handle constructor with call to this or super with subsequent statements");
+                    }
+                } else {
+                    wrapBodyInTryCatch(block);
+                }
+            }
         }
     }
 
     private void convertMethod(MethodDeclaration method) {
+        removeThrowsFromJavadoc(method.getComment());
         method.setThrows(null);
-        BlockStmt body = method.getBody();
+        wrapBodyInTryCatch(method.getBody());
+    }
 
+    private void wrapBodyInTryCatch(BlockStmt body) {
         List<Statement> originalStatements = body.getStmts();
         body.setStmts(new ArrayList<>());
 
@@ -151,6 +193,10 @@ public class GenerateCheckedExceptionWrappersTask extends DefaultTask {
         tryStmt.setResources(emptyList());
 
         body.getStmts().add(tryStmt);
+    }
+
+    private void removeThrowsFromJavadoc(Comment comment) {
+        comment.setContent(comment.getContent().replaceAll("@throws", "no longer throws"));
     }
 
     private BlockStmt createCatchBlock() {
